@@ -630,7 +630,6 @@ ALTER TABLE `v2_server_v2ray`
 ALTER TABLE `v2_server_vmess`
     CHANGE `network` `network` varchar(11) COLLATE 'utf8mb4_general_ci' NOT NULL AFTER `rate`;
 
-DROP TABLE IF EXISTS `v2_server_hysteria`;
 CREATE TABLE `v2_server_hysteria` (
                                       `id` int(11) NOT NULL AUTO_INCREMENT,
                                       `group_id` varchar(255) NOT NULL,
@@ -684,3 +683,80 @@ CREATE TABLE `v2_log` (
                           `updated_at` int(11) NOT NULL,
                           PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE `v2_log`
+    CHANGE `title` `title` text COLLATE 'utf8mb4_general_ci' NOT NULL AFTER `id`;
+
+CREATE TABLE `v2_server_vless` (
+                                   `id` int(11) NOT NULL AUTO_INCREMENT,
+                                   `group_id` text NOT NULL,
+                                   `route_id` text,
+                                   `name` varchar(255) NOT NULL,
+                                   `parent_id` int(11) DEFAULT NULL,
+                                   `host` varchar(255) NOT NULL,
+                                   `port` int(11) NOT NULL,
+                                   `server_port` int(11) NOT NULL,
+                                   `tls` tinyint(1) NOT NULL,
+                                   `tls_settings` text,
+                                   `flow` varchar(11) DEFAULT NULL,
+                                   `network` varchar(11) NOT NULL,
+                                   `network_settings` text,
+                                   `tags` text,
+                                   `rate` varchar(11) NOT NULL,
+                                   `show` tinyint(1) NOT NULL DEFAULT '0',
+                                   `sort` int(11) DEFAULT NULL,
+                                   `created_at` int(11) NOT NULL,
+                                   `updated_at` int(11) NOT NULL,
+                                   PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE `v2_server_vless`
+    CHANGE `flow` `flow` varchar(64) COLLATE 'utf8mb4_general_ci' NULL AFTER `tls_settings`;
+
+ALTER TABLE `v2_server_hysteria`
+    ADD `version` int(11) NOT NULL AFTER `id`;
+
+ALTER TABLE `v2_server_hysteria`
+    ADD `obfs` varchar(64) NULL AFTER `down_mbps`,
+    ADD `obfs_password` varchar(255) NULL AFTER `obfs`;
+
+UPDATE v2_server_vless
+    SET tls_settings = REPLACE(tls_settings, 'shortId', 'short_id');
+
+ALTER TABLE `v2_plan`
+    ADD `device_limit` int(11) NULL AFTER `transfer_enable`;
+
+ALTER TABLE `v2_user`
+    ADD `device_limit` int(11) NULL AFTER `transfer_enable`;
+
+ALTER TABLE `v2_server_trojan`
+    ADD `network` varchar(11) NULL AFTER `server_port`,
+    ADD `network_settings` text AFTER `network`;
+
+ALTER TABLE `v2_server_hysteria`
+    MODIFY COLUMN `port` VARCHAR(255) NOT NULL;
+
+CREATE TABLE `v2_giftcard` (
+                             `id` int(11) NOT NULL AUTO_INCREMENT,
+                             `code` varchar(255) NOT NULL,
+                             `name` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
+                             `type` tinyint(1) NOT NULL,
+                             `value` int(11) DEFAULT NULL,
+                             `limit_use` int(11) DEFAULT NULL,
+                             `used_user_ids` varchar(255) DEFAULT NULL,
+                             `started_at` int(11) NOT NULL,
+                             `ended_at` int(11) NOT NULL,
+                             `created_at` int(11) NOT NULL,
+                             `updated_at` int(11) NOT NULL,
+                             PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE `v2_giftcard`
+    ADD `plan_id` int(11) NULL AFTER `value`,
+    CHANGE `used_user_ids` `used_user_ids` varchar(16384) NULL AFTER `limit_use`;
+
+ALTER TABLE `v2_user`
+ADD `auto_renewal` tinyint(4) NOT NULL DEFAULT '0' AFTER `speed_limit`;
+
+ALTER TABLE `v2_ticket`
+CHANGE `reply_status` `reply_status` tinyint(1) NOT NULL DEFAULT '0' COMMENT '0:待回复 1:已回复' AFTER `status`;

@@ -6,6 +6,7 @@ use App\Models\ServerHysteria;
 use App\Models\ServerLog;
 use App\Models\ServerRoute;
 use App\Models\ServerShadowsocks;
+use App\Models\ServerVless;
 use App\Models\User;
 use App\Models\ServerVmess;
 use App\Models\ServerTrojan;
@@ -15,6 +16,34 @@ use Illuminate\Support\Facades\Cache;
 
 class ServerService
 {
+    public function getAvailableVless(User $user):array
+    {
+        $servers = [];
+        $model = ServerVless::orderBy('sort', 'ASC');
+        $server = $model->get();
+        foreach ($server as $key => $v) {
+            if (!$v['show']) continue;
+            $server[$key]['type'] = 'vless';
+            if (!in_array($user->group_id, $server[$key]['group_id'])) continue;
+            if (strpos($server[$key]['port'], '-') !== false) {
+                $server[$key]['port'] = Helper::randomPort($server[$key]['port']);
+            }
+            if ($server[$key]['parent_id']) {
+                $server[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_VLESS_LAST_CHECK_AT', $server[$key]['parent_id']));
+            } else {
+                $server[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_VLESS_LAST_CHECK_AT', $server[$key]['id']));
+            }
+            if (isset($server[$key]['tls_settings'])) {
+                if (isset($server[$key]['tls_settings']['private_key'])) {
+                    $server[$key]['tls_settings']=array_diff_key($server[$key]['tls_settings'],array('private_key'=>''));
+                }
+            }
+            $servers[] = $server[$key]->toArray();
+        }
+
+
+        return $servers;
+    }
 
     public function getAvailableVmess(User $user):array
     {
@@ -72,9 +101,6 @@ class ServerService
             $servers[$key]['type'] = 'hysteria';
             $servers[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_HYSTERIA_LAST_CHECK_AT', $v['id']));
             if (!in_array($user->group_id, $v['group_id'])) continue;
-            if (strpos($v['port'], '-') !== false) {
-                $servers[$key]['port'] = Helper::randomPort($v['port']);
-            }
             if (isset($servers[$v['parent_id']])) {
                 $servers[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_HYSTERIA_LAST_CHECK_AT', $v['parent_id']));
                 $servers[$key]['created_at'] = $servers[$v['parent_id']]['created_at'];
@@ -113,12 +139,17 @@ class ServerService
             $this->getAvailableShadowsocks($user),
             $this->getAvailableVmess($user),
             $this->getAvailableTrojan($user),
-            $this->getAvailableHysteria($user)
+            $this->getAvailableHysteria($user),
+            $this->getAvailableVless($user)
         );
         $tmp = array_column($servers, 'sort');
         array_multisort($tmp, SORT_ASC, $servers);
         return array_map(function ($server) {
-            $server['port'] = (int)$server['port'];
+            if (strpos($server['port'], '-')) {
+                $server['mport'] = (string)$server['port'];
+            } else {
+                $server['port'] = (int)$server['port'];
+            }
             $server['is_online'] = (time() - 300 > $server['last_check_at']) ? 0 : 1;
             $server['cache_key'] = "{$server['type']}-{$server['id']}-{$server['updated_at']}-{$server['is_online']}";
             return $server;
@@ -137,7 +168,8 @@ class ServerService
             ->select([
                 'id',
                 'uuid',
-                'speed_limit'
+                'speed_limit',
+                'device_limit'
             ])
             ->get();
     }
@@ -196,6 +228,17 @@ class ServerService
         return $servers;
     }
 
+    public function getAllVLess()
+    {
+        $servers = ServerVless::orderBy('sort', 'ASC')
+            ->get()
+            ->toArray();
+        foreach ($servers as $k => $v) {
+            $servers[$k]['type'] = 'vless';
+        }
+        return $servers;
+    }
+
     public function getAllTrojan()
     {
         $servers = ServerTrojan::orderBy('sort', 'ASC')
@@ -241,7 +284,8 @@ class ServerService
             $this->getAllShadowsocks(),
             $this->getAllVMess(),
             $this->getAllTrojan(),
-            $this->getAllHysteria()
+            $this->getAllHysteria(),
+            $this->getAllVLess()
         );
         $this->mergeData($servers);
         $tmp = array_column($servers, 'sort');
@@ -272,6 +316,8 @@ class ServerService
                 return ServerTrojan::find($serverId);
             case 'hysteria':
                 return ServerHysteria::find($serverId);
+            case 'vless':
+                return ServerVless::find($serverId);
             default:
                 return false;
         }

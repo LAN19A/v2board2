@@ -61,7 +61,7 @@ class BTCPay {
     }
 
     public function notify($params) {
-        $payload = trim(file_get_contents('php://input'));
+        $payload = trim(request()->getContent() ?: json_encode($_POST));
 
         $headers = getallheaders();
 
@@ -98,7 +98,7 @@ class BTCPay {
             'callback_no' => $pay_trade_no
         ];
         http_response_code(200);
-        die('success');
+        return('success');
     }
 
 

@@ -112,9 +112,22 @@ class UserService
         return User::whereRaw('u + d < transfer_enable')
             ->where(function ($query) {
                 $query->where('expired_at', '>=', time())
-                    ->orWhere('expired_at', NULL);
+                ->orWhereNull('expired_at');
             })
             ->where('banned', 0)
+            ->get();
+    }
+
+    public function getDeviceLimitedUsers()
+    {
+        return User::whereRaw('u + d < transfer_enable')
+            ->where(function ($query) {
+                $query->where('expired_at', '>=', time())
+                ->orWhereNull('expired_at');
+            })
+            ->where('banned', 0)
+            ->where('device_limit','>', 0)
+            ->select('id')
             ->get();
     }
 
@@ -170,16 +183,13 @@ class UserService
 
     public function trafficFetch(array $server, string $protocol, array $data)
     {
-        $statService = new StatisticalService();
-        $statService->setStartAt(strtotime(date('Y-m-d')));
-        $statService->setUserStats();
-        $statService->setServerStats();
-        foreach (array_keys($data) as $userId) {
-            $u = $data[$userId][0];
-            $d = $data[$userId][1];
-            TrafficFetchJob::dispatch($u, $d, $userId, $server, $protocol);
-            $statService->statServer($server['id'], $protocol, $u, $d);
-            $statService->statUser($server['rate'], $userId, $u, $d);
-        }
+        TrafficFetchJob::dispatch($data, $server, $protocol);
+        StatUserJob::dispatch($data, $server, $protocol, 'd');
+        StatServerJob::dispatch($data, $server, $protocol, 'd');
+    }
+
+    public static function getMaxId()
+    {
+        return User::max('id');
     }
 }

@@ -22,7 +22,7 @@ Route::get('/', function (Request $request) {
     }
     $renderParams = [
         'title' => config('v2board.app_name', 'V2Board'),
-        'theme' => config('v2board.frontend_theme', 'v2board'),
+        'theme' => config('v2board.frontend_theme', 'default'),
         'version' => config('app.version'),
         'description' => config('v2board.app_description', 'V2Board is best'),
         'logo' => config('v2board.logo')
@@ -33,8 +33,8 @@ Route::get('/', function (Request $request) {
         $themeService->init();
     }
 
-    $renderParams['theme_config'] = config('theme.' . config('v2board.frontend_theme', 'v2board'));
-    return view('theme::' . config('v2board.frontend_theme', 'v2board') . '.dashboard', $renderParams);
+    $renderParams['theme_config'] = config('theme.' . config('v2board.frontend_theme', 'default'));
+    return view('theme::' . config('v2board.frontend_theme', 'default') . '.dashboard', $renderParams);
 });
 
 //TODO:: 兼容
@@ -50,3 +50,7 @@ Route::get('/' . config('v2board.secure_path', config('v2board.frontend_admin_pa
         'secure_path' => config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key'))))
     ]);
 });
+
+if (!empty(config('v2board.subscribe_path'))) {
+    Route::get(config('v2board.subscribe_path'), 'V1\\Client\\ClientController@subscribe')->middleware('client');
+}

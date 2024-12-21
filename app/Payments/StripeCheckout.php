@@ -99,7 +99,7 @@ class StripeCheckout {
         \Stripe\Stripe::setApiKey($this->config['stripe_sk_live']);
         try {
             $event = \Stripe\Webhook::constructEvent(
-                file_get_contents('php://input'),
+                request()->getContent() ?: json_encode($_POST),
                 $_SERVER['HTTP_STRIPE_SIGNATURE'],
                 $this->config['stripe_webhook_key']
             );
@@ -127,12 +127,12 @@ class StripeCheckout {
             default:
                 abort(500, 'event is not support');
         }
-        die('success');
+        return('success');
     }
 
     private function exchange($from, $to)
     {
-        $result = file_get_contents('https://api.exchangerate.host/latest?symbols=' . $to . '&base=' . $from);
+        $result = file_get_contents("https://api.exchangerate-api.com/v4/latest/{$from}");
         $result = json_decode($result, true);
         return $result['rates'][$to];
     }
